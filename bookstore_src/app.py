@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request
 import os
 import sqlite3
 
@@ -16,14 +16,12 @@ def get_db_connection():
 @app.route("/", methods=["GET"])
 def home():
     conn = get_db_connection()
-    cursor = conn.cursor()
 
-    cursor.execute("""
+    categories = conn.execute("""
         SELECT *
         FROM category
         ORDER BY categoryName
-    """)
-    categories = cursor.fetchall()
+    """).fetchall()
 
     conn.close()
 
@@ -35,29 +33,25 @@ def category():
     category_id = request.args.get("categoryId", type=int)
 
     conn = get_db_connection()
-    cursor = conn.cursor()
 
-    cursor.execute("""
+    categories = conn.execute("""
         SELECT *
         FROM category
         ORDER BY categoryName
-    """)
-    categories = cursor.fetchall()
+    """).fetchall()
 
-    cursor.execute("""
+    selected_category = conn.execute("""
         SELECT *
         FROM category
         WHERE categoryId = ?
-    """, (category_id,))
-    selected_category = cursor.fetchone()
+    """, (category_id,)).fetchone()
 
-    cursor.execute("""
+    books = conn.execute("""
         SELECT *
         FROM book
         WHERE categoryId = ?
         ORDER BY title
-    """, (category_id,))
-    books = cursor.fetchall()
+    """, (category_id,)).fetchall()
 
     conn.close()
 
@@ -76,22 +70,19 @@ def search():
     term = request.form.get("search", "").strip()
 
     conn = get_db_connection()
-    cursor = conn.cursor()
 
-    cursor.execute("""
+    categories = conn.execute("""
         SELECT *
         FROM category
         ORDER BY categoryName
-    """)
-    categories = cursor.fetchall()
+    """).fetchall()
 
-    cursor.execute("""
+    books = conn.execute("""
         SELECT *
         FROM book
         WHERE lower(title) LIKE lower(?)
         ORDER BY title
-    """, (f"%{term}%",))
-    books = cursor.fetchall()
+    """, (f"%{term}%",)).fetchall()
 
     conn.close()
 
@@ -109,20 +100,17 @@ def book_detail():
     book_id = request.args.get("bookId", type=int)
 
     conn = get_db_connection()
-    cursor = conn.cursor()
 
-    cursor.execute("""
+    categories = conn.execute("""
         SELECT * FROM category ORDER BY categoryName
-    """)
-    categories = cursor.fetchall()
+    """).fetchall()
 
-    cursor.execute("""
+    book = conn.execute("""
         SELECT book.*, category.categoryName
         FROM book
         JOIN category ON book.categoryId = category.categoryId
         WHERE book.bookId = ?
-    """, (book_id,))
-    book = cursor.fetchone()
+    """, (book_id,)).fetchone()
 
     conn.close()
 
@@ -135,12 +123,10 @@ def book_detail():
 @app.route("/add-book", methods=["GET", "POST"])
 def add_book():
     conn = get_db_connection()
-    cursor = conn.cursor()
 
-    cursor.execute("""
+    categories = conn.execute("""
         SELECT * FROM category ORDER BY categoryName
-    """)
-    categories = cursor.fetchall()
+    """).fetchall()
 
     if request.method == "POST":
         title = request.form.get("title")
@@ -150,7 +136,7 @@ def add_book():
         image = request.form.get("image")
         category_id = request.form.get("categoryId", type=int)
 
-        cursor.execute("""
+        conn.execute("""
             INSERT INTO book (categoryId, title, author, isbn, price, image, readNow)
             VALUES (?, ?, ?, ?, ?, ?, 0)
         """, (category_id, title, author, isbn, price, image))
